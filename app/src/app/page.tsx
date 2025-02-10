@@ -94,14 +94,14 @@ const Layout = ({ children }: { children: ReactNode }) => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-6 h-[calc(100vh-4rem)]">
         <div className="flex justify-center items-center min-h-[calc(100vh-10rem)]">
-          <div className="w-full md:w-3/4 lg:w-3/4 bg-white rounded-2xl shadow-lg p-8 flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-8 text-black items-center" > 
-            {/* Left Side: QR Code */}
-            <div className="w-min md:w-1/2 flex flex-col items-center md:block hidden">
+          <div className="w-full md:w-3/4 lg:w-3/4 bg-white rounded-2xl shadow-lg p-8 flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-8 text-black items-center">
+            {/* QR Code: Mobile Top, Desktop Left */}
+            <div className="w-full md:w-1/2 flex flex-col items-center md:block">
               <QrCodeDisplay value={randomSequence} />
             </div>
 
             {/* Right Side: Control Panel */}
-            <div className="w-3/4 flex flex-col space-y-4">
+            <div className="w-full md:w-3/4 flex flex-col space-y-4">
               <h2 className="text-2xl font-bold">Control Panel</h2>
               <label className="flex justify-between items-center">
                 <span className="mr-4">Dropdown:</span> 
@@ -117,16 +117,18 @@ const Layout = ({ children }: { children: ReactNode }) => {
               </label>
 
               <label className="flex justify-between items-center">
-                <span className="mr-4">Slider:</span>
-                <input
-                  type="range"
-                  min="10"
-                  max="30"
-                  value={sliderValue}
-                  onChange={(e) => setSliderValue(Number(e.target.value))}
-                  className="ml-2 w-1/2"
-                />
-                <span className="ml-2">{sliderValue}</span>
+              <span className="mr-4">Slider:</span>
+                <div className="flex justify-end items-center w-1/2">
+                  <input
+                    type="range"
+                    min="10"
+                    max="30"
+                    value={sliderValue}
+                    onChange={(e) => setSliderValue(Number(e.target.value))}
+                    className="py-2 w-full"
+                  />
+                  <span className="ml-2">{sliderValue}</span>
+                </div>
               </label>
 
               <label className="flex justify-between items-center">
@@ -141,24 +143,24 @@ const Layout = ({ children }: { children: ReactNode }) => {
 
               <label className="flex justify-between items-center">
                 <span className="mr-4">Range:</span>
-                <div className="flex justify-end items-center space-x-2">
+                <div className="flex justify-end items-center w-1/2">
                   <input
                     type="number"
                     value={rangeValues[0]}
                     onChange={(e) => handleRangeChange(0, e.target.value)}
                     onClick={handleInputClick}
-                    className="w-20 px-2 py-1 border rounded text-center"
+                    className="w-full p-2 border rounded text-center"
                     step="1"
                     min="0"
                     max={rangeValues[1]}
                   />
-                  <span className="mr-4">-</span>
+                  <span className=" ml-4 mr-4">-</span>
                   <input
                     type="number"
                     value={rangeValues[1]}
                     onChange={(e) => handleRangeChange(1, e.target.value)}
                     onClick={handleInputClick}
-                    className="w-20 px-2 py-1 border rounded text-center"
+                    className="w-full p-2 border rounded text-center"
                     step="1"
                     min={rangeValues[0]}
                     max="20000"
@@ -171,7 +173,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
                 <input
                   type="button"
                   value="Start"
-                  className="ml-2 p-2 border rounded w-20 bg-blue-500 text-white hover:bg-blue-700 cursor-pointer" 
+                  className="p-2 border rounded w-1/2 bg-blue-500 text-white hover:bg-blue-700 cursor-pointer" 
                 />
               </label>
             </div>
