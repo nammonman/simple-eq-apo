@@ -5,7 +5,7 @@ const QrCodeDisplay = ({ value }: { value: string }) => {
   return (
     <div className="flex flex-col items-center">
       <QRCode value={value} size={256} />
-      <p className="mt-4 text-lg font-mono">{value}</p>
+      <p className="mt-4 text-lg font-mono mb-4 lg:mb-0">{value}</p>
     </div>
   );
 };

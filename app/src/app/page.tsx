@@ -81,10 +81,6 @@ const Layout = ({ children }: { children: ReactNode }) => {
     event.currentTarget.select();
   };
 
-  const getInputWidth = (value: number) => {
-    return `${(Math.max(5, value.toString().length))*16}px`;
-  };
-
   const handleFadeOut = () => {
     setIsFadingOut(true);
     setTimeout(() => {
@@ -190,17 +186,17 @@ const Layout = ({ children }: { children: ReactNode }) => {
                   <div className='pt-24 text-white'>.</div>
                 </div>
               )}
-              <div className='absolute inset-0 z-10 flex flex-col md:flex-row m-auto max-w-4xl w-10/12 min-h-96 h-fit bg-white rounded-2xl p-16 shadow-xl justify-center items-center '>
+              <div className='absolute inset-0 z-10 flex flex-col lg:flex-row m-auto max-w-4xl w-10/12 min-h-96 h-fit bg-white rounded-2xl p-16  shadow-xl justify-center items-center '>
               {/*left side*/}
-              <div className="w-full md:w-1/2 flex flex-col items-center md:block">
+              <div className="w-full md:w-1/2 flex flex-col items-center lg:block">
                 <QrCodeDisplay value={randomSequence} />
               </div>
 
               {/*right side*/}
-              <div className="w-full md:w-3/4 flex flex-col space-y-8 md:ml-16">
+              <div className="w-full md:w-3/4 flex flex-col space-y-8 lg:ml-16">
                 <div className='flex justify-between items-center'>
                   <h2 className="text-2xl font-bold ">Select Parameters</h2>
-                  <a href="" className="text-gray-500 hover:text-black">how to use?</a>
+                  <a href="" className="text-gray-500 hover:text-black pl-4">how to use?</a>
                 </div>
                 
                 <ParameterLabel label="Audio channel:" hint="Select the audio channel to apply the equalizer to">
@@ -230,7 +226,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
                 </ParameterLabel>
 
                 <ParameterLabel label="Frequency Range:" hint="Set the frequency range for the equalizer">
-                  <div className="flex flex-col md:flex-row justify-between items-center w-1/2">
+                  <div className="flex flex-col sm:flex-row justify-between items-center w-1/2">
                     <input
                       type="number"
                       value={rangeValues[0]}
@@ -240,7 +236,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
                       step="1"
                       min="0"
                       max={rangeValues[1]}
-                      style={{ width: getInputWidth(rangeValues[0]) }}
+                      style={{ width: 85}}
                     />
                     <span className=" ml-4 mr-4">-</span>
                     <input
@@ -252,7 +248,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
                       step="1"
                       min={rangeValues[0]}
                       max="20000"
-                      style={{ width: getInputWidth(rangeValues[1]) }}
+                      style={{ width: 85 }}
                     />
                   </div>
                 </ParameterLabel>
