@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Heading1, Menu, X } from 'lucide-react';
 import QrCodeDisplay from '../components/QrCodeDisplay'; 
 import { ReactNode } from 'react';
@@ -36,8 +36,13 @@ const Layout = ({ children }: { children: ReactNode }) => {
   const [sliderValue, setSliderValue] = useState(20);
   const [textBoxValue, setTextBoxValue] = useState('');
   const [rangeValues, setRangeValues] = useState([0, 20000]);
-  const [isSquareVisible, setIsSquareVisible] = useState(true);
+  const [isWelcomeOverlay, setIsWelcomeOverlay] = useState(true);
+  const [isMainMenu, setIsMainMenu] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
+  const [isFadingIn, setIsFadingIn] = useState(false);
+  const [screenWidth, setScreenWidth] = useState(0);
+  const [containerBounds, setContainerBounds] = useState({ top: 0, bottom: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setRandomSequence(Math.random().toString(36).substring(2, 12));
@@ -53,6 +58,39 @@ const Layout = ({ children }: { children: ReactNode }) => {
     linkRacingSans.href = 'https://fonts.googleapis.com/css2?family=Racing+Sans+One&display=swap';
     linkRacingSans.rel = 'stylesheet';
     document.head.appendChild(linkRacingSans);
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setScreenWidth(window.innerWidth);
+    };
+    
+    // Set initial width
+    handleResize();
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const updateContainerBounds = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setContainerBounds({
+          top: rect.top,
+          bottom: rect.bottom
+        });
+      }
+    };
+
+    updateContainerBounds();
+    window.addEventListener('resize', updateContainerBounds);
+    window.addEventListener('scroll', updateContainerBounds);
+
+    return () => {
+      window.removeEventListener('resize', updateContainerBounds);
+      window.removeEventListener('scroll', updateContainerBounds);
+    };
   }, []);
 
   const handleRangeChange = (index: number, value: string) => {
@@ -84,111 +122,87 @@ const Layout = ({ children }: { children: ReactNode }) => {
   const handleFadeOut = () => {
     setIsFadingOut(true);
     setTimeout(() => {
-      setIsSquareVisible(false);
-    }, 500); // Match the duration of the CSS transition
+      setIsWelcomeOverlay(false);
+      setIsMainMenu(true);
+      setTimeout(() => {
+        setIsFadingIn(true);
+      }, 300); 
+    }, 300); 
+    
+    
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 overflow-hidden relative" style={{ fontFamily: 'Anuphan, sans-serif' }}>
-      {/* Background with blurred pastel balls */}
-      <div className="absolute inset-0 z-0">
+  // Calculate ball positions based on screen width and container bounds
+  const ballPosition = (screenWidth * 0.2) + 'px';
+  const topBallsPosition = (containerBounds.top/2) + 'px';
+  const bottomBallsPosition = (containerBounds.bottom/8) + 'px';
 
-        <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-violet-300 rounded-full filter blur-3xl opacity-50"></div>
-        <div className="absolute bottom-1/4 right-1/2 w-96 h-96 bg-indigo-700 rounded-full filter blur-3xl opacity-50"></div>
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-cyan-300 rounded-full filter blur-3xl opacity-50"></div>
-        <div className="absolute top-1/4 left-1/2 w-96 h-96 bg-blue-300 rounded-full filter blur-3xl opacity-50"></div>
-        <div className="absolute bottom-1/3 right-1/4 w-96 h-96 bg-purple-300 rounded-full filter blur-3xl opacity-50"></div>
+  return (
+    <div className="relative min-w-full min-h-screen bg-gray-50" style={{ fontFamily: 'Anuphan, sans-serif' }}>
+      {/* Background with moving blurred pastel balls */}
+      <div className="fixed inset-0 z-0 overflow-hidden">
+        <div 
+          className="fixed w-1/3 h-1/2 bg-violet-300 rounded-full filter blur-3xl opacity-60 "
+          style={{ 
+            bottom: bottomBallsPosition, 
+            left: ballPosition,
+          }}
+        ></div>
+        <div 
+          className="fixed w-1/3 h-1/2 bg-indigo-700 rounded-full filter blur-3xl opacity-60 "
+          style={{ 
+            bottom: bottomBallsPosition, 
+            right: ballPosition,
+          }}
+        ></div>
+        <div 
+          className="fixed w-1/3 h-1/2 bg-cyan-300 rounded-full filter blur-3xl opacity-60 "
+          style={{ 
+            top: topBallsPosition, 
+            right: ballPosition,
+          }}
+        ></div>
+        <div 
+          className="fixed w-1/3 h-1/2 bg-blue-300 rounded-full filter blur-3xl opacity-60 "
+          style={{ 
+            top: topBallsPosition, 
+            left: ballPosition,
+          }}
+        ></div>
+        <div 
+          className="fixed w-1/3 h-1/2 bg-purple-300 rounded-full filter blur-3xl opacity-60 "
+          style={{ 
+            bottom: bottomBallsPosition, 
+            right: ballPosition,
+          }}
+        ></div>
       </div>
 
-      <div className="relative z-10">
-        {/* Navigation */}
-        <nav className="bg-white shadow-md">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="flex justify-between h-16">
-              <div className="flex items-center">
-                <span className="text-gray-700 font-bold">Simple EQ-APO</span>
-              </div>
+      {/* Main Content */}
+      <main className="relative text-black justify-center items-center min-h-screen flex p-4">
+        <div ref={containerRef} className='relative z-10 bg-white rounded-2xl p-8 md:p-12 lg:p-16 w-full sm:w-4/5 md:w-4/5 lg:w-3/4 xl:w-3/5 shadow-xl mx-auto'>
+          {isWelcomeOverlay && (
+            <div className={`inset-0 flex flex-col lg:flex-row m-auto justify-center items-center transition-opacity duration-300 ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
+              
+              <div className="w-full p-8 flex flex-col space-y-4 justify-between items-center">
+                <h2 className="text-2xl text-center font-bold">Make your PC speakers sound more balanced with just your phone and Equalizer APO </h2>
 
-              {/* Desktop Navigation */}
-              <div className="hidden md:flex items-center space-x-4">
-                <a href="/" className="text-gray-700 hover:text-gray-900">Home</a>
-                <a href="/search" className="text-gray-700 hover:text-gray-900">Search</a>
-                <a href="/profile" className="text-gray-700 hover:text-gray-900">Profile</a>
-              </div>
-
-              {/* Mobile menu button */}
-              <div className="md:hidden flex items-center">
+                <h6 className='pt-4 pb-2 text-center text-gray-700'>Note: This project is not affiliated with Equalizer APO in any way. <br /> Click <a href='https://sourceforge.net/projects/equalizerapo/' className='underline hover:text-black'>here</a> to go to the official website for Equalizer APO</h6>
+                <p className="text-center"></p>
                 <button
-                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="text-gray-500 hover:text-gray-700"
+                  onClick={handleFadeOut}
+                  className="p-2 border rounded w-1/2 bg-blue-500 text-white hover:bg-blue-700 cursor-pointer"
                 >
-                  {isMobileMenuOpen ? (
-                    <X className="h-6 w-6" />
-                  ) : (
-                    <Menu className="h-6 w-6" />
-                  )}
+                  Begin
                 </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile Navigation */}
-          {isMobileMenuOpen && (
-            <div className="md:hidden z-100">
-              <div className="px-2 pt-2 pb-3 space-y-1 z-100">
-                <a
-                  href="/"
-                  className="block px-3 py-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                >
-                  Home
-                </a>
-                <a
-                  href="/search"
-                  className="block px-3 py-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                >
-                  Search
-                </a>
-                <a
-                  href="/profile"
-                  className="block px-3 py-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
-                >
-                  Profile
-                </a>
+                
               </div>
             </div>
           )}
-        </nav>
-
-        {/* Main Content */}
-        <main className="text-black max-w-7xl mx-auto px-4 py-6 h-[calc(100vh-4rem)]">
-              {isSquareVisible && (
-                <div className={`absolute inset-0 z-20 flex flex-col md:flex-row m-auto max-w-4xl w-10/12 min-h-96 h-fit bg-white rounded-2xl p-16 justify-center items-center transition-opacity duration-500 ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
-                  <div className='pt-24 text-white'>.</div>
-                  {/*left side*/}
-                  {/*<div className="w-full md:w-1/2 p-8 flex flex-col space-y-4 items-center">
-                  <h2 className="text-6xl font-black text-center" style={{ fontFamily: '"Racing Sans One", serif' }}>Simple EQ-APO</h2>
-                  </div>*/}
-                  {/*right side*/}
-                  
-                  <div className="w-full md:w-3/4 p-8 flex flex-col space-y-4 justify-between items-center">
-                    <h2 className="text-2xl text-center font-bold">Make your PC speakers sound more balanced with just your phone and Equalizer APO </h2>
-
-                    <h6 className='pt-4 pb-2 text-center text-gray-700'>Note: This project is not affiliated with Equalizer APO in any way. <br /> Click <a href='https://sourceforge.net/projects/equalizerapo/' className='underline hover:text-black'>here</a> to go to the official website for Equalizer APO</h6>
-                    <p className="text-center"></p>
-                    <button
-                      onClick={handleFadeOut}
-                      className="p-2 border rounded w-1/2 bg-blue-500 text-white hover:bg-blue-700 cursor-pointer"
-                    >
-                      Begin
-                    </button>
-                    
-                  </div>
-                  <div className='pt-24 text-white'>.</div>
-                </div>
-              )}
-              <div className='absolute inset-0 z-10 flex flex-col lg:flex-row m-auto max-w-4xl w-10/12 min-h-96 h-fit bg-white rounded-2xl p-16  shadow-xl justify-center items-center '>
+          {isMainMenu && (
+            <div className={`inset-0 flex flex-col lg:flex-row m-auto justify-center items-center transition-opacity duration-300 ${isFadingIn ? 'opacity-100' : 'opacity-0'}`}>
               {/*left side*/}
-              <div className="w-full md:w-1/2 flex flex-col items-center lg:block">
+              <div className="w-full md:w-1/2 flex flex-col items-center lg:block ">
                 <QrCodeDisplay value={randomSequence} />
               </div>
 
@@ -215,7 +229,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
                   <div className="flex justify-end items-center w-1/2">
                     <input
                       type="range"
-                      min="10"
+                      min="5"
                       max="50"
                       value={sliderValue}
                       onChange={(e) => { setSliderValue(Number(e.target.value)); handleRangeChange(0, rangeValues[0].toString()); }}
@@ -226,7 +240,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
                 </ParameterLabel>
 
                 <ParameterLabel label="Frequency Range:" hint="Set the frequency range for the equalizer">
-                  <div className="flex flex-col sm:flex-row justify-between items-center w-1/2">
+                  <div className="flex  justify-between items-center w-1/2">
                     <input
                       type="number"
                       value={rangeValues[0]}
@@ -252,31 +266,24 @@ const Layout = ({ children }: { children: ReactNode }) => {
                     />
                   </div>
                 </ParameterLabel>
-
-                <label className="flex justify-between items-center">
-                  <span className="mr-4"></span>
-                  <input
-                    type="button"
-                    value="Start"
-                    className="p-2 border rounded w-1/2 bg-blue-500 text-white hover:bg-blue-700 cursor-pointer" 
-                  />
-                </label>
-                
-                
+                  <label className="flex justify-between items-center text-red-500">
+					
+                    <span className="mr-4"></span>
+                    <input
+                      type="button"
+                      value="Start"
+                      className="p-2 border rounded w-1/2 bg-blue-500 text-white hover:bg-blue-700 cursor-pointer" 
+                    />
+                  </label>
               </div>
-              
             </div>
-                
-            
-          
-            
-          
-            
-          {children}
-        </main>
-      </div>
+          )}
+        </div>
+        {children}
+      </main>
     </div>
-  );
+  );  
 };
+
 
 export default Layout;
