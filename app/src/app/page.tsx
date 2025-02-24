@@ -30,21 +30,22 @@ const LabelWithHint = ({ label, hint, children }: { label: string, hint: string,
 };
 
 const Layout = ({ children }: { children: ReactNode }) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [screenWidth, setScreenWidth] = useState(0);
+  const [containerBounds, setContainerBounds] = useState({ top: 0, bottom: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const [randomSequence, setRandomSequence] = useState('');
   const [dropdownValue, setDropdownValue] = useState('');
   const [sliderValue, setSliderValue] = useState(20);
   const [textBoxValue, setTextBoxValue] = useState('');
   const [rangeValues, setRangeValues] = useState([0, 20000]);
-  const [isWelcomeOverlay, setIsWelcomeOverlay] = useState(true);
+
+  const [isWelcome, setIsWelcome] = useState(true);
   const [isMainMenu, setIsMainMenu] = useState(false);
-  const [isPCReady, setIsPCReady] = useState(false);
-  const [isFadingOut, setIsFadingOut] = useState(false);
-  const [isFadingIn, setIsFadingIn] = useState(false);
-  const [screenWidth, setScreenWidth] = useState(0);
-  const [containerBounds, setContainerBounds] = useState({ top: 0, bottom: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isParameterScreen, setIsParameterScreen] = useState(true);
+  const [isWelcomeFadingOut, setIsWelcomeFadingOut] = useState(false);
+  const [isMainMenuFadingIn, setIsMainMenuFadingIn] = useState(false);
+  
+  const [isParameter, setIsParameter] = useState(true);
   const [isPCReadyScreen, setIsPCReadyScreen] = useState(false);
   const [isParameterFadingOut, setIsParameterFadingOut] = useState(false);
   const [isPCReadyFadingIn, setIsPCReadyFadingIn] = useState(false);
@@ -124,23 +125,21 @@ const Layout = ({ children }: { children: ReactNode }) => {
     event.currentTarget.select();
   };
 
-  const handleFadeOut = () => {
-    setIsFadingOut(true);
+  const handleWelcomeFadeOut = () => {
+    setIsWelcomeFadingOut(true);
     setTimeout(() => {
-      setIsWelcomeOverlay(false);
+      setIsWelcome(false);
       setIsMainMenu(true);
       setTimeout(() => {
-        setIsFadingIn(true);
+        setIsMainMenuFadingIn(true);
       }, 300); 
     }, 300); 
-    
-    
   };
 
   const handleNextClick = () => {
     setIsParameterFadingOut(true);
     setTimeout(() => {
-      setIsParameterScreen(false);
+      setIsParameter(false);
       setIsPCReadyScreen(true);
       setTimeout(() => {
         setIsPCReadyFadingIn(true);
@@ -152,7 +151,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
     setIsPCReadyFadingIn(false);
     setTimeout(() => {
       setIsPCReadyScreen(false);
-      setIsParameterScreen(true);
+      setIsParameter(true);
       setIsParameterFadingOut(false);
     }, 300);
   };
@@ -207,8 +206,8 @@ const Layout = ({ children }: { children: ReactNode }) => {
       <main className="relative text-black justify-center items-center min-h-screen flex flex-col p-4">
         
         <div ref={containerRef} className='relative z-10 bg-white rounded-2xl p-16 w-full sm:w-4/5 lg:w-3/4 shadow-xl mx-auto'>
-          {isWelcomeOverlay && (
-            <div className={`inset-0 flex flex-col lg:flex-row m-auto justify-center items-center transition-opacity duration-300 ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
+          {isWelcome && (
+            <div className={`inset-0 flex flex-col lg:flex-row m-auto justify-center items-center transition-opacity duration-300 ${isWelcomeFadingOut ? 'opacity-0' : 'opacity-100'}`}>
               
               <div className="w-full p-8 flex flex-col space-y-4 justify-between items-center">
               
@@ -216,7 +215,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
                 <h6 className='pt-4 pb-2 text-center text-gray-500'>Note: This project is not affiliated with Equalizer APO in any way. <br /> Click <a href='https://sourceforge.net/projects/equalizerapo/' className='underline hover:text-gray-900'>here</a> to go to the official website for Equalizer APO</h6>
                 <p className="text-center"></p>
                 <button
-                  onClick={handleFadeOut}
+                  onClick={handleWelcomeFadeOut}
                   className="p-2 border rounded w-1/2 bg-blue-500 text-white hover:bg-blue-700 cursor-pointer"
                 >
                   Begin
@@ -226,14 +225,14 @@ const Layout = ({ children }: { children: ReactNode }) => {
             </div>
           )}
           {isMainMenu && (
-            <div className={`inset-0 flex flex-col lg:flex-row m-auto justify-center items-center transition-opacity duration-300 ${isFadingIn ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`inset-0 flex flex-col lg:flex-row m-auto justify-center items-center transition-opacity duration-300 ${isMainMenuFadingIn ? 'opacity-100' : 'opacity-0'}`}>
               {/*left side*/}
               <div className="w-full md:w-1/2 flex flex-col items-center lg:block ">
                 <QrCodeDisplay value={randomSequence} />
               </div>
 
               {/*right side*/}
-              {isParameterScreen && (
+              {isParameter && (
                 <div className={`w-full md:w-3/4 flex flex-col space-y-8 lg:ml-16 transition-opacity duration-300 ${isParameterFadingOut ? 'opacity-0' : 'opacity-100'}`}>
                   <div className='flex justify-between items-center'>
                     <h2 className="text-2xl font-bold ">Select Parameters</h2>
