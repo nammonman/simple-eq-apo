@@ -11,7 +11,7 @@ const HintOverlay = ({ hint }: { hint: string }) => (
   </div>
 );
 
-const ParameterLabel = ({ label, hint, children }: { label: string, hint: string, children: ReactNode }) => {
+const LabelWithHint = ({ label, hint, children }: { label: string, hint: string, children: ReactNode }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -38,11 +38,16 @@ const Layout = ({ children }: { children: ReactNode }) => {
   const [rangeValues, setRangeValues] = useState([0, 20000]);
   const [isWelcomeOverlay, setIsWelcomeOverlay] = useState(true);
   const [isMainMenu, setIsMainMenu] = useState(false);
+  const [isPCReady, setIsPCReady] = useState(false);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [isFadingIn, setIsFadingIn] = useState(false);
   const [screenWidth, setScreenWidth] = useState(0);
   const [containerBounds, setContainerBounds] = useState({ top: 0, bottom: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isParameterScreen, setIsParameterScreen] = useState(true);
+  const [isPCReadyScreen, setIsPCReadyScreen] = useState(false);
+  const [isParameterFadingOut, setIsParameterFadingOut] = useState(false);
+  const [isPCReadyFadingIn, setIsPCReadyFadingIn] = useState(false);
 
   useEffect(() => {
     setRandomSequence(Math.random().toString(36).substring(2, 12));
@@ -132,6 +137,26 @@ const Layout = ({ children }: { children: ReactNode }) => {
     
   };
 
+  const handleNextClick = () => {
+    setIsParameterFadingOut(true);
+    setTimeout(() => {
+      setIsParameterScreen(false);
+      setIsPCReadyScreen(true);
+      setTimeout(() => {
+        setIsPCReadyFadingIn(true);
+      }, 300);
+    }, 300);
+  };
+
+  const handleBackClick = () => {
+    setIsPCReadyFadingIn(false);
+    setTimeout(() => {
+      setIsPCReadyScreen(false);
+      setIsParameterScreen(true);
+      setIsParameterFadingOut(false);
+    }, 300);
+  };
+
   // Calculate ball positions based on screen width and container bounds
   const ballPosition = (screenWidth * 0.2) + 'px';
   const topBallsPosition = (containerBounds.top/2) + 'px';
@@ -179,15 +204,16 @@ const Layout = ({ children }: { children: ReactNode }) => {
       </div>
 
       {/* Main Content */}
-      <main className="relative text-black justify-center items-center min-h-screen flex p-4">
-        <div ref={containerRef} className='relative z-10 bg-white rounded-2xl p-8 md:p-12 lg:p-16 w-full sm:w-4/5 md:w-4/5 lg:w-3/4 xl:w-3/5 shadow-xl mx-auto'>
+      <main className="relative text-black justify-center items-center min-h-screen flex flex-col p-4">
+        
+        <div ref={containerRef} className='relative z-10 bg-white rounded-2xl p-16 w-full sm:w-4/5 lg:w-3/4 shadow-xl mx-auto'>
           {isWelcomeOverlay && (
             <div className={`inset-0 flex flex-col lg:flex-row m-auto justify-center items-center transition-opacity duration-300 ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}>
               
               <div className="w-full p-8 flex flex-col space-y-4 justify-between items-center">
+              
                 <h2 className="text-2xl text-center font-bold">Make your PC speakers sound more balanced with just your phone and Equalizer APO </h2>
-
-                <h6 className='pt-4 pb-2 text-center text-gray-700'>Note: This project is not affiliated with Equalizer APO in any way. <br /> Click <a href='https://sourceforge.net/projects/equalizerapo/' className='underline hover:text-black'>here</a> to go to the official website for Equalizer APO</h6>
+                <h6 className='pt-4 pb-2 text-center text-gray-500'>Note: This project is not affiliated with Equalizer APO in any way. <br /> Click <a href='https://sourceforge.net/projects/equalizerapo/' className='underline hover:text-gray-900'>here</a> to go to the official website for Equalizer APO</h6>
                 <p className="text-center"></p>
                 <button
                   onClick={handleFadeOut}
@@ -207,77 +233,120 @@ const Layout = ({ children }: { children: ReactNode }) => {
               </div>
 
               {/*right side*/}
-              <div className="w-full md:w-3/4 flex flex-col space-y-8 lg:ml-16">
-                <div className='flex justify-between items-center'>
-                  <h2 className="text-2xl font-bold ">Select Parameters</h2>
-                  <a href="" className="text-gray-500 hover:text-black pl-4">how to use?</a>
+              {isParameterScreen && (
+                <div className={`w-full md:w-3/4 flex flex-col space-y-8 lg:ml-16 transition-opacity duration-300 ${isParameterFadingOut ? 'opacity-0' : 'opacity-100'}`}>
+                  <div className='flex justify-between items-center'>
+                    <h2 className="text-2xl font-bold ">Select Parameters</h2>
+                    <a href="" className="text-gray-500 hover:text-gray-900 pl-4">How to use?</a>
+                  </div>
+
+                  <LabelWithHint label="Audio channel:" hint="Select the audio channel to apply the equalizer to">
+                    <select
+                      value={dropdownValue}
+                      onChange={(e) => setDropdownValue(e.target.value)}
+                      className="ml-2 p-2 border rounded w-1/2"
+                    >
+                      <option value="BothAvg">Both (Average)</option>
+                      <option value="BothSep">Both (Seperate)</option>
+                      <option value="L">L Only</option>
+                      <option value="R">R Only</option>
+                    </select>
+                  </LabelWithHint>
+
+                  <LabelWithHint label="Number of points:" hint="Adjust the number of peaking filter points in the frequency range">
+                    <div className="flex justify-end items-center w-1/2">
+                      <input
+                        type="range"
+                        min="5"
+                        max="50"
+                        value={sliderValue}
+                        onChange={(e) => { setSliderValue(Number(e.target.value)); handleRangeChange(0, rangeValues[0].toString()); }}
+                        className="py-2 w-full"
+                      />
+                      <span className="ml-2">{sliderValue}</span>
+                    </div>
+                  </LabelWithHint>
+
+                  <LabelWithHint label="Frequency Range:" hint="Set the frequency range for the equalizer">
+                    <div className="flex justify-between items-center w-1/2">
+                      <input
+                        type="number"
+                        value={rangeValues[0]}
+                        onChange={(e) => handleRangeChange(0, e.target.value)}
+                        onClick={handleInputClick}
+                        className="w-full p-2 border rounded text-center"
+                        step="1"
+                        min="0"
+                        max={rangeValues[1]}
+                        style={{ width: 85}}
+                      />
+                      <span className=" ml-4 mr-4">-</span>
+                      <input
+                        type="number"
+                        value={rangeValues[1]}
+                        onChange={(e) => handleRangeChange(1, e.target.value)}
+                        onClick={handleInputClick}
+                        className="w-full p-2 border rounded text-center"
+                        step="1"
+                        min={rangeValues[0]}
+                        max="20000"
+                        style={{ width: 85 }}
+                      />
+                    </div>
+                  </LabelWithHint>
+                    <label className="flex justify-between items-center text-red-500">
+                    
+                      <span className="mr-4"></span>
+                      <input
+                        type="button"
+                        value="Next"
+                        onClick={handleNextClick}
+                        className="p-2 border rounded w-1/2 bg-blue-500 text-white hover:bg-blue-700 cursor-pointer" 
+                      />
+                    </label>
                 </div>
-                
-                <ParameterLabel label="Audio channel:" hint="Select the audio channel to apply the equalizer to">
-                  <select
-                    value={dropdownValue}
-                    onChange={(e) => setDropdownValue(e.target.value)}
-                    className="ml-2 p-2 border rounded w-1/2"
-                  >
-                    <option value="Both">Both</option>
-                    <option value="L">L Only</option>
-                    <option value="R">R Only</option>
-                  </select>
-                </ParameterLabel>
+              )}
 
-                <ParameterLabel label="Number of points:" hint="Adjust the number of peaking filter points in the frequency range">
-                  <div className="flex justify-end items-center w-1/2">
-                    <input
-                      type="range"
-                      min="5"
-                      max="50"
-                      value={sliderValue}
-                      onChange={(e) => { setSliderValue(Number(e.target.value)); handleRangeChange(0, rangeValues[0].toString()); }}
-                      className="py-2 w-full"
-                    />
-                    <span className="ml-2">{sliderValue}</span>
+              {isPCReadyScreen && (
+                <div className={`w-full md:w-3/4 flex flex-col space-y-8 lg:ml-16 transition-opacity duration-300 ${isPCReadyFadingIn ? 'opacity-100' : 'opacity-0'}`}>
+                  <div className='flex justify-between items-center'>
+                    <h2 className="text-2xl font-bold ">Your PC side is ready</h2>
+                    <a href="" className="text-gray-500 hover:text-gray-900 pl-4">How to use?</a>
                   </div>
-                </ParameterLabel>
-
-                <ParameterLabel label="Frequency Range:" hint="Set the frequency range for the equalizer">
-                  <div className="flex  justify-between items-center w-1/2">
-                    <input
-                      type="number"
-                      value={rangeValues[0]}
-                      onChange={(e) => handleRangeChange(0, e.target.value)}
-                      onClick={handleInputClick}
-                      className="w-full p-2 border rounded text-center"
-                      step="1"
-                      min="0"
-                      max={rangeValues[1]}
-                      style={{ width: 85}}
-                    />
-                    <span className=" ml-4 mr-4">-</span>
-                    <input
-                      type="number"
-                      value={rangeValues[1]}
-                      onChange={(e) => handleRangeChange(1, e.target.value)}
-                      onClick={handleInputClick}
-                      className="w-full p-2 border rounded text-center"
-                      step="1"
-                      min={rangeValues[0]}
-                      max="20000"
-                      style={{ width: 85 }}
-                    />
+                  <div>
+                    Please scan the QR code with your mobile device to continue. 
+                    <br />
+                    <br />
+                    The test will automatically start when you press "Start Test" on your mobile device.
+                    <br />
+                    <br />
+                    Both of your devices should be on the same network for the best results.
+                    <br />
+                    <br />
+                    <div className="flex mt-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+                      <span className="ml-4">Waiting for mobile device...</span>
+                    </div>
                   </div>
-                </ParameterLabel>
                   <label className="flex justify-between items-center text-red-500">
-					
-                    <span className="mr-4"></span>
-                    <input
-                      type="button"
-                      value="Start"
-                      className="p-2 border rounded w-1/2 bg-blue-500 text-white hover:bg-blue-700 cursor-pointer" 
-                    />
-                  </label>
-              </div>
+                      <span className="mr-4"></span>
+                      <input
+                        type="button"
+                        value="Go Back"
+                        onClick={handleBackClick}
+                        className="p-2 border rounded w-1/2 bg-red-500 text-white hover:bg-red-700cursor-pointer" 
+                      />
+                    </label>
+                  
+                </div>
+              )}
             </div>
           )}
+          
+        </div>
+        <div className='pt-3 space-x-6'>
+          <a href="https://github.com/nammonman/simple-eq-apo" className=' text-gray-500 hover:text-gray-700'>Source Code</a>
+          <a href="https://linktr.ee/sirapatsiri" className=' text-gray-500 hover:text-gray-700'>About Me</a>
         </div>
         {children}
       </main>
