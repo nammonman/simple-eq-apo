@@ -29,7 +29,7 @@ const LabelWithHint = ({ label, hint, children }: { label: string, hint: string,
   );
 };
 
-const Layout = ({ children }: { children: ReactNode }) => {
+const Layout = ({ children }: { children?: ReactNode }) => {
   const [screenWidth, setScreenWidth] = useState(0);
   const [containerBounds, setContainerBounds] = useState({ top: 0, bottom: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -353,5 +353,8 @@ const Layout = ({ children }: { children: ReactNode }) => {
   );  
 };
 
+const Page = () => {
+  return <Layout />;
+};
 
-export default Layout;
+export default Page;

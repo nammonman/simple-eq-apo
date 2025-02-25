@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, use } from 'react';
 import { Heading1, Menu, X } from 'lucide-react';
 import { ReactNode } from 'react';
 
@@ -28,7 +28,7 @@ const LabelWithHint = ({ label, hint, children }: { label: string, hint: string,
   );
 };
 
-const Layout = ({ children }: { children: ReactNode }) => {
+const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
   const [screenWidth, setScreenWidth] = useState(0);
   const [containerBounds, setContainerBounds] = useState({ top: 0, bottom: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -163,9 +163,9 @@ const Layout = ({ children }: { children: ReactNode }) => {
                   <div>
                     You are connected to
                     <br />
-                    [qr code id]. 
+                    <span className="mt-4 text-lg font-mono font-black mb-4 lg:mb-0">{qrid}. </span>
                     <br />
-                    (Please check if they match your PC)
+                    (Please check if this matches the qr code on your PC)
                     <br />
                     <br />
                     The test will automatically start when you press "Start Test" on your mobile device.
@@ -189,7 +189,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
                     </div>
                   </div>
                   <label className="flex justify-between items-center">
-                    <span className="mr-4">[qr code id]</span>
+                  <span className="mt-4 font-mono font-black mb-4 mr-4 lg:mb-0">{qrid}</span>
                     <input
                       type="button"
                       value="Continue"
@@ -224,7 +224,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
                       <span>📱 Press the "Start Test" button when you are ready.</span>
                   </div>
                   <label className="flex justify-between items-center">
-                    <span className="mr-4">[qr code id]</span>
+                  <span className="mt-4 font-mono font-black mb-4 mr-4 lg:mb-0">{qrid}</span>
                     <input
                       type="button"
                       value="Start Test."
@@ -250,5 +250,9 @@ const Layout = ({ children }: { children: ReactNode }) => {
   );  
 };
 
+const Page = ({ params }: { params: Promise<{ qrid: string }> }) => {
+  const unwrappedParams = use(params);
+  return <Layout qrid={unwrappedParams.qrid} />;
+};
 
-export default Layout;
+export default Page;
