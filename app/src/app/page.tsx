@@ -152,7 +152,9 @@ const Layout = ({ children }: { children?: ReactNode }) => {
     setTimeout(() => {
       setIsPCReadyScreen(false);
       setIsParameter(true);
-      setIsParameterFadingOut(false);
+      setTimeout(() => {
+        setIsParameterFadingOut(false);
+      }, 300);
     }, 300);
   };
 
@@ -267,7 +269,7 @@ const Layout = ({ children }: { children?: ReactNode }) => {
                   </LabelWithHint>
 
                   <LabelWithHint label="Frequency Range:" hint="Set the frequency range for the equalizer">
-                    <div className="flex justify-between items-center w-1/2">
+                    <div className="flex flex-col sm:flex-row justify-between items-center w-1/2 space-y-2 sm:space-y-0">
                       <input
                         type="number"
                         value={rangeValues[0]}
@@ -279,7 +281,7 @@ const Layout = ({ children }: { children?: ReactNode }) => {
                         max={rangeValues[1]}
                         style={{ width: 85}}
                       />
-                      <span className=" ml-4 mr-4">-</span>
+                      <span className="sm:ml-4 sm:mr-4">-</span>
                       <input
                         type="number"
                         value={rangeValues[1]}
@@ -333,7 +335,7 @@ const Layout = ({ children }: { children?: ReactNode }) => {
                         type="button"
                         value="Go Back"
                         onClick={handleBackClick}
-                        className="p-2 border rounded w-1/2 bg-red-500 text-white hover:bg-red-700cursor-pointer" 
+                        className="p-2 border rounded w-1/2 bg-red-500 text-white hover:bg-red-700 cursor-pointer" 
                       />
                     </label>
                   
@@ -344,6 +346,7 @@ const Layout = ({ children }: { children?: ReactNode }) => {
           
         </div>
         <div className='pt-3 space-x-6'>
+          <a className='font-black underline text-red-500 hover:text-red-700'>UNDER DEVELOPMENT</a>
           <a href="https://github.com/nammonman/simple-eq-apo" className=' text-gray-500 hover:text-gray-700'>Source Code</a>
           <a href="https://linktr.ee/sirapatsiri" className=' text-gray-500 hover:text-gray-700'>About Me</a>
         </div>

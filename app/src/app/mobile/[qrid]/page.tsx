@@ -240,7 +240,8 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
             </div>
           )}
         </div>
-        <div className='pt-3 space-x-6'>
+        <div className='pt-3 space-x-3'>
+          <a className='font-black underline text-red-500 hover:text-red-700'>UNDER DEVELOPMENT</a>
           <a href="https://github.com/nammonman/simple-eq-apo" className=' text-gray-500 hover:text-gray-700'>Source Code</a>
           <a href="https://linktr.ee/sirapatsiri" className=' text-gray-500 hover:text-gray-700'>About Me</a>
         </div>
