@@ -6,44 +6,6 @@ import QrCodeDisplay from '../components/QrCodeDisplay';
 import { ReactNode } from 'react';
 import { supabase } from '@/lib/supabase'
 
-// Add this inside your component to fetch data
-const fetchData = async () => {
-  const { data, error } = await supabase
-    .from('pc_session')
-    .select('*')
-  
-  if (error) {
-    console.error('Error fetching data:', error)
-    return
-  }
-  // Handle your data here
-  console.log(data)
-}
-
-const HintOverlay = ({ hint }: { hint: string }) => (
-  <div className="absolute bottom-full mb-2 w-48 p-2 bg-gray-700 text-white text-sm rounded shadow-lg">
-    {hint}
-  </div>
-);
-
-const LabelWithHint = ({ label, hint, children }: { label: string, hint: string, children: ReactNode }) => {
-  const [isHovered, setIsHovered] = useState(false);
-
-  return (
-    <label className="flex justify-between items-center relative">
-      <span
-        className="mr-4"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        {label}
-        {isHovered && <HintOverlay hint={hint} />}
-      </span>
-      {children}
-    </label>
-  );
-};
-
 const Layout = ({ children }: { children?: ReactNode }) => {
   const [screenWidth, setScreenWidth] = useState(0);
   const [containerBounds, setContainerBounds] = useState({ top: 0, bottom: 0 });
@@ -65,8 +27,126 @@ const Layout = ({ children }: { children?: ReactNode }) => {
   const [isParameterFadingOut, setIsParameterFadingOut] = useState(false);
   const [isPCReadyFadingIn, setIsPCReadyFadingIn] = useState(false);
 
+  const [isMobileReady, setIsMobileReady] = useState(false);
+
+  // Add this inside your component to fetch data
+  const fetchDataTest = async () => {
+    const { data, error } = await supabase
+      .from('pc_session')
+      .select('*')
+    
+    if (error) {
+      console.error('Error fetching data:', error)
+      return
+    }
+    // Handle your data here
+    console.log(data)
+  }
+
+  const createPCSession = async (qrId: string) => {
+    // First check if session exists
+    const { data: existingSession } = await supabase
+      .from('pc_session')
+      .select()
+      .eq('qr_id', qrId)
+      .single()
+
+    if (!existingSession) {
+      // Only create if session doesn't exist
+      const { data, error } = await supabase
+        .from('pc_session')
+        .insert([
+          {
+            qr_id: qrId,
+            is_active: true,
+            is_paired: false
+          }
+        ])
+        .select()
+
+      if (error) {
+        console.error('Error creating session (PC):', error)
+        return
+      }
+      console.log('Session created (PC):', data)
+    } else {
+      console.log('Session already exists (PC):', existingSession)
+    }
+  }
+
+  const updatePCSession = async (qrId: string, isPaired: boolean, isActive: boolean) => {
+    const { data, error } = await supabase
+      .from('pc_session')
+      .update({ 
+        is_paired: isPaired,
+        is_active: isActive
+      })
+      .eq('qr_id', qrId)
+      .select()
+
+    if (error) {
+      console.error('Error updating session (PC):', error)
+      return
+    }
+    setIsMobileReady(isPaired)
+    console.log('Session updated (PC):', data)
+  }
+
+  const setupRealtimeSubscription = (qrId: string) => {
+    const subscription = supabase
+      .channel('mobile_session')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'mobile_session',
+          filter: `qr_id=eq.${qrId}` 
+        },
+        (payload) => {
+          if (payload.new.qr_id === qrId) {
+            console.log('Mobile session updated:', payload.new)
+            updatePCSession(qrId, true, true)
+          }
+        }
+      )
+      .subscribe()
+
+    return subscription
+  }
+
+  const HintOverlay = ({ hint }: { hint: string }) => (
+    <div className="absolute bottom-full mb-2 w-48 p-2 bg-gray-700 text-white text-sm rounded shadow-lg">
+      {hint}
+    </div>
+  );
+
+  const LabelWithHint = ({ label, hint, children }: { label: string, hint: string, children: ReactNode }) => {
+    const [isHovered, setIsHovered] = useState(false);
+
+    return (
+      <label className="flex justify-between items-center relative">
+        <span
+          className="mr-4"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          {label}
+          {isHovered && <HintOverlay hint={hint} />}
+        </span>
+        {children}
+      </label>
+    );
+  };
+
   useEffect(() => {
-    setRandomSequence(Math.random().toString(36).substring(2, 12));
+    const newSequence = Math.random().toString(36).substring(2, 12);
+    setRandomSequence(newSequence);
+    createPCSession(newSequence);
+    const subscription = setupRealtimeSubscription(newSequence);
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -141,7 +221,6 @@ const Layout = ({ children }: { children?: ReactNode }) => {
   };
 
   const handleWelcomeFadeOut = () => {
-    fetchData();
     setIsWelcomeFadingOut(true);
     setTimeout(() => {
       setIsWelcome(false);
@@ -341,8 +420,17 @@ const Layout = ({ children }: { children?: ReactNode }) => {
                     <br />
                     <br />
                     <div className="flex mt-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
-                      <span className="ml-4">Waiting for mobile device...</span>
+                      {!isMobileReady ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+                          <span className="ml-2">Waiting for mobile device...</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="h-4 w-4 text-green-500 font-black mb-2">✓</div>
+                          <span className="ml-2">Your mobile device is ready.</span>
+                        </>
+                      )}
                     </div>
                   </div>
                   <label className="flex justify-between items-center text-red-500">
