@@ -1,10 +1,8 @@
 'use client'
-
-'use client'
-
 import { useState, useEffect, useRef, use } from 'react';
 import { Heading1, Menu, X } from 'lucide-react';
 import { ReactNode } from 'react';
+import { supabase } from '@/lib/supabase'
 
 const HintOverlay = ({ hint }: { hint: string }) => (
   <div className="absolute bottom-full mb-2 w-48 p-2 bg-gray-700 text-white text-sm rounded shadow-lg">

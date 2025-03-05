@@ -4,6 +4,21 @@ import { useState, useEffect, useRef } from 'react';
 import { Heading1, Menu, X } from 'lucide-react';
 import QrCodeDisplay from '../components/QrCodeDisplay'; 
 import { ReactNode } from 'react';
+import { supabase } from '@/lib/supabase'
+
+// Add this inside your component to fetch data
+const fetchData = async () => {
+  const { data, error } = await supabase
+    .from('pc_session')
+    .select('*')
+  
+  if (error) {
+    console.error('Error fetching data:', error)
+    return
+  }
+  // Handle your data here
+  console.log(data)
+}
 
 const HintOverlay = ({ hint }: { hint: string }) => (
   <div className="absolute bottom-full mb-2 w-48 p-2 bg-gray-700 text-white text-sm rounded shadow-lg">
@@ -126,6 +141,7 @@ const Layout = ({ children }: { children?: ReactNode }) => {
   };
 
   const handleWelcomeFadeOut = () => {
+    fetchData();
     setIsWelcomeFadingOut(true);
     setTimeout(() => {
       setIsWelcome(false);
