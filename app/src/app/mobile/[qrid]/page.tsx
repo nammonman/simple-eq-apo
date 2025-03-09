@@ -19,14 +19,22 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
 
   const createMobileSession = async (qrId: string) => {
     // First check if session exists
-    const { data: existingSession } = await supabase
+    const { data: existingMobileSession } = await supabase
       .from('mobile_session')
       .select()
       .eq('qr_id', qrId)
       .single()
+    const { data: existingPCSession } = await supabase
+      .from('pc_session')
+      .select()
+      .eq('qr_id', qrId)
+      .single()
 
-    if (!existingSession) {
-      // Only create if session doesn't exist
+    if (existingPCSession) {
+      setIsPCReady(existingPCSession.is_paired);
+    }
+    if (existingPCSession && !existingMobileSession) {
+      // Only create if pc session is created and mobile session doesn't already exist
       const { data, error } = await supabase
         .from('mobile_session')
         .insert([
@@ -44,8 +52,28 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
       }
       console.log('Session created (mobile):', data)
     } else {
-      console.log('Session already exists (mobile):', existingSession)
+      console.log('Session already exists (mobile):', existingMobileSession)
     }
+  }
+
+  const createTriggerTest = async (qrId: string, type: string) => {
+
+    const { data, error } = await supabase
+      .from('session_trigger_test')
+      .insert([
+        {
+          qr_id: qrId,
+          type: type
+        }
+      ])
+      .select()
+
+      if (error) {
+        console.error('Error creating trigger:', error)
+        return
+      }
+    console.log('Trigger created:', data)
+
   }
 
   const updateMobileSession = async (qrId: string, isPaired: boolean, isActive: boolean) => {
@@ -66,7 +94,7 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
     console.log('Session updated (mobile):', data)
   }
 
-  const setupRealtimeSubscription = (qrId: string) => {
+  const setupRealtimePCSubscription = (qrId: string) => {
     const subscription = supabase
       .channel('pc_session')
       .on(
@@ -116,7 +144,7 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
 
   useEffect(() => {
     createMobileSession(qrid);
-    const subscription = setupRealtimeSubscription(qrid);
+    const subscription = setupRealtimePCSubscription(qrid);
     return () => {
       subscription.unsubscribe();
     };
@@ -288,7 +316,15 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
                       <span>🤫 Make sure your environment is as quiet as possible.</span>
                       <br />
                       <br />
-                      <span>🔊 Set the volume of your PC to your normal listening volume.</span>
+                        <span>🔊 Set the volume of your PC to your normal listening volume.
+                        <input
+                          type="button"
+                          value="Test volume here." 
+                          disabled={!isPCReady}
+                          className="cursor-pointer ml-1 text-blue-500 hover:text-blue-700"
+                          onClick={() => createTriggerTest(qrid, "volume")}
+                        />
+                        </span>
                       <br />
                       <br />
                       <span>👂 Hold your mobile device up to your ususal head position when listening to music.</span>
@@ -322,6 +358,7 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
                           ? 'bg-green-500 hover:bg-green-700' 
                           : 'bg-gray-400 cursor-not-allowed'
                       }`}
+                      onClick={() => createTriggerTest(qrid, "real")}
                     />
                   </label>
                 </div>

@@ -5,6 +5,7 @@ import { Heading1, Menu, X } from 'lucide-react';
 import QrCodeDisplay from '../components/QrCodeDisplay'; 
 import { ReactNode } from 'react';
 import { supabase } from '@/lib/supabase'
+import { redirect } from 'next/navigation';
 
 const Layout = ({ children }: { children?: ReactNode }) => {
   const [screenWidth, setScreenWidth] = useState(0);
@@ -13,9 +14,9 @@ const Layout = ({ children }: { children?: ReactNode }) => {
 
   const [randomSequence, setRandomSequence] = useState('');
   const [dropdownValue, setDropdownValue] = useState('');
-  const [sliderValue, setSliderValue] = useState(20);
+  const [sliderValue, setSliderValue] = useState(16);
   const [textBoxValue, setTextBoxValue] = useState('');
-  const [rangeValues, setRangeValues] = useState([0, 20000]);
+  const [rangeValues, setRangeValues] = useState([20, 20000]);
 
   const [isWelcome, setIsWelcome] = useState(true);
   const [isMainMenu, setIsMainMenu] = useState(false);
@@ -29,19 +30,64 @@ const Layout = ({ children }: { children?: ReactNode }) => {
 
   const [isMobileReady, setIsMobileReady] = useState(false);
 
-  // Add this inside your component to fetch data
-  const fetchDataTest = async () => {
-    const { data, error } = await supabase
-      .from('pc_session')
-      .select('*')
-    
-    if (error) {
-      console.error('Error fetching data:', error)
-      return
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const audioContextRef = useRef<AudioContext>(null);
+  const oscillatorRef = useRef<OscillatorNode>(null);
+  
+  const playSweep = (startFreq: number, endFreq: number, duration: number ) => {
+    // Stop any currently playing sound
+    if (oscillatorRef.current) {
+      oscillatorRef.current.stop();
+      oscillatorRef.current = null;
     }
-    // Handle your data here
-    console.log(data)
-  }
+    
+    // Create audio context if it doesn't exist
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext();
+    }
+    
+    const audioContext = audioContextRef.current;
+    if (!audioContext) return;
+    const currentTime = audioContext.currentTime;
+    
+    // Create oscillator
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.type = 'sine';
+    oscillator.frequency.value = startFreq;
+    
+    // Create logarithmic sweep
+    const ratio = Math.log(endFreq / startFreq);
+    
+    // Schedule frequency changes
+    const sweepLength = 100; // Number of frequency update points
+    for (let i = 0; i <= sweepLength; i++) {
+      const t = i / sweepLength * duration;
+      const frequency = startFreq * Math.exp(ratio * t / duration);
+      oscillator.frequency.exponentialRampToValueAtTime(
+        frequency,
+        currentTime + t
+      );
+    }
+    
+    // Connect nodes
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Start and stop
+    oscillator.start(currentTime);
+    oscillator.stop(currentTime + duration);
+    
+    oscillatorRef.current = oscillator;
+    setIsPlaying(true);
+    
+    // Reset isPlaying state after sweep finishes
+    setTimeout(() => {
+      setIsPlaying(false);
+    }, duration * 1000);
+  };
 
   const createPCSession = async (qrId: string) => {
     // First check if session exists
@@ -71,6 +117,7 @@ const Layout = ({ children }: { children?: ReactNode }) => {
       console.log('Session created (PC):', data)
     } else {
       console.log('Session already exists (PC):', existingSession)
+      redirect("/")
     }
   }
 
@@ -92,7 +139,7 @@ const Layout = ({ children }: { children?: ReactNode }) => {
     console.log('Session updated (PC):', data)
   }
 
-  const setupRealtimeSubscription = (qrId: string) => {
+  const setupRealtimeMobileSubscription = (qrId: string) => {
     const subscription = supabase
       .channel('mobile_session')
       .on(
@@ -115,6 +162,47 @@ const Layout = ({ children }: { children?: ReactNode }) => {
     return subscription
   }
 
+  const setupRealtimeTestSubscription = (qrId: string) => {
+    const subscription = supabase
+      .channel('session_trigger_test')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'session_trigger_test',
+          filter: `qr_id=eq.${qrId}` 
+        },
+        (payload) => {
+          if (payload.new.qr_id === qrId) {
+            console.log('Mobile sent trigger test:', payload.new)
+            if (payload.new.type === "volume") {
+              playSweep(20, 20000, 1);
+            }
+            else if (payload.new.type === "real") {
+              // wait 2 secs then play 3 sine sweeps lasting 1 sec each sequentially
+              setIsTesting(true);
+              setTimeout(() => {
+                playSweep(rangeValues[0], rangeValues[1], 1);
+                setTimeout(() => {
+                  playSweep(rangeValues[0], rangeValues[1], 1);
+                  setTimeout(() => {
+                    playSweep(rangeValues[0], rangeValues[1], 1);
+                    setTimeout(() => {
+                      setIsTesting(false);
+                    }, 1000);
+                  }, 1000);
+                }, 1000);
+              }, 2000);
+            }
+          }
+        }
+      )
+      .subscribe()
+
+    return subscription
+  }
+
   const HintOverlay = ({ hint }: { hint: string }) => (
     <div className="absolute bottom-full mb-2 w-48 p-2 bg-gray-700 text-white text-sm rounded shadow-lg">
       {hint}
@@ -125,17 +213,17 @@ const Layout = ({ children }: { children?: ReactNode }) => {
     const [isHovered, setIsHovered] = useState(false);
 
     return (
-      <label className="flex justify-between items-center relative">
-        <span
+      <div className="flex justify-between items-center relative">
+        <div
           className="mr-4"
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
           {label}
           {isHovered && <HintOverlay hint={hint} />}
-        </span>
+        </div>
         {children}
-      </label>
+      </div>
     );
   };
 
@@ -143,9 +231,11 @@ const Layout = ({ children }: { children?: ReactNode }) => {
     const newSequence = Math.random().toString(36).substring(2, 12);
     setRandomSequence(newSequence);
     createPCSession(newSequence);
-    const subscription = setupRealtimeSubscription(newSequence);
+    const subscriptionMobile = setupRealtimeMobileSubscription(newSequence);
+    const subscriptionTest = setupRealtimeTestSubscription(newSequence);
     return () => {
-      subscription.unsubscribe();
+      subscriptionMobile.unsubscribe();
+      subscriptionTest.unsubscribe();
     };
   }, []);
 
@@ -159,6 +249,17 @@ const Layout = ({ children }: { children?: ReactNode }) => {
     linkRacingSans.href = 'https://fonts.googleapis.com/css2?family=Racing+Sans+One&display=swap';
     linkRacingSans.rel = 'stylesheet';
     document.head.appendChild(linkRacingSans);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (oscillatorRef.current) {
+        oscillatorRef.current.stop();
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -198,7 +299,7 @@ const Layout = ({ children }: { children?: ReactNode }) => {
     setRangeValues((prevValues) => {
       const valueInt = parseInt(value);
       const newValues = [...prevValues];
-      newValues[index] = isNaN(valueInt) ? 0 : Math.max(0, Math.min(20000, valueInt));
+      newValues[index] = isNaN(valueInt) ? 20 : Math.max(20, Math.min(20000, valueInt));
       if (newValues[0] > newValues[1]) {
         newValues[1] = newValues[0];
       } else if (newValues[1] < newValues[0]) {
@@ -305,9 +406,7 @@ const Layout = ({ children }: { children?: ReactNode }) => {
         <div ref={containerRef} className='relative z-10 bg-white rounded-2xl p-16 w-full sm:w-4/5 lg:w-3/4 shadow-xl mx-auto'>
           {isWelcome && (
             <div className={`inset-0 flex flex-col lg:flex-row m-auto justify-center items-center transition-opacity duration-300 ${isWelcomeFadingOut ? 'opacity-0' : 'opacity-100'}`}>
-              
               <div className="w-full p-8 flex flex-col space-y-4 justify-between items-center">
-              
                 <h2 className="text-2xl text-center font-bold">Make your PC speakers sound more balanced with just your phone and Equalizer APO </h2>
                 <h6 className='pt-4 pb-2 text-center text-gray-500'>Note: This project is not affiliated with Equalizer APO in any way. <br /> Click <a href='https://sourceforge.net/projects/equalizerapo/' className='underline hover:text-gray-900'>here</a> to go to the official website for Equalizer APO</h6>
                 <p className="text-center"></p>
@@ -317,7 +416,6 @@ const Layout = ({ children }: { children?: ReactNode }) => {
                 >
                   Begin
                 </button>
-                
               </div>
             </div>
           )}
@@ -336,7 +434,7 @@ const Layout = ({ children }: { children?: ReactNode }) => {
                     <a href="" className="text-gray-500 hover:text-gray-900 pl-4">How to use?</a>
                   </div>
 
-                  <LabelWithHint label="Audio channel:" hint="Select the audio channel to apply the equalizer to">
+                  <LabelWithHint label="Audio channel:" hint="Select the audio channel to apply the equalizer to.">
                     <select
                       value={dropdownValue}
                       onChange={(e) => setDropdownValue(e.target.value)}
@@ -349,7 +447,7 @@ const Layout = ({ children }: { children?: ReactNode }) => {
                     </select>
                   </LabelWithHint>
 
-                  <LabelWithHint label="Number of points:" hint="Adjust the number of peaking filter points in the frequency range">
+                  <LabelWithHint label="Number of points:" hint="Adjust the number of peaking filter points in the frequency range.">
                     <div className="flex justify-end items-center w-1/2">
                       <input
                         type="range"
@@ -359,11 +457,11 @@ const Layout = ({ children }: { children?: ReactNode }) => {
                         onChange={(e) => { setSliderValue(Number(e.target.value)); handleRangeChange(0, rangeValues[0].toString()); }}
                         className="py-2 w-full"
                       />
-                      <span className="ml-2">{sliderValue}</span>
+                      <span className="ml-3 w-6">{sliderValue}</span>
                     </div>
                   </LabelWithHint>
 
-                  <LabelWithHint label="Frequency Range:" hint="Set the frequency range for the equalizer">
+                  <LabelWithHint label="Frequency Range:" hint="Set the frequency range for the equalizer. Lower bass frequencies may not be accurately measured depending on the device used.">
                     <div className="flex flex-col sm:flex-row justify-between items-center w-1/2 space-y-2 sm:space-y-0">
                       <input
                         type="number"
