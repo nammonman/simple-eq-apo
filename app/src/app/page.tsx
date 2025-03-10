@@ -20,8 +20,10 @@ const Layout = ({ children }: { children?: ReactNode }) => {
 
   const [isWelcome, setIsWelcome] = useState(true);
   const [isMainMenu, setIsMainMenu] = useState(false);
+  const [isTest, setIsTest] = useState(false);
   const [isWelcomeFadingOut, setIsWelcomeFadingOut] = useState(false);
   const [isMainMenuFadingIn, setIsMainMenuFadingIn] = useState(false);
+  const [isTestFadingIn, setIsTestFadingIn] = useState(false);
   
   const [isParameter, setIsParameter] = useState(true);
   const [isPCReadyScreen, setIsPCReadyScreen] = useState(false);
@@ -31,7 +33,7 @@ const Layout = ({ children }: { children?: ReactNode }) => {
   const [isMobileReady, setIsMobileReady] = useState(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
+  const [testText, setTestText] = useState("Waiting...");
   const audioContextRef = useRef<AudioContext>(null);
   const oscillatorRef = useRef<OscillatorNode>(null);
   
@@ -70,6 +72,11 @@ const Layout = ({ children }: { children?: ReactNode }) => {
         frequency,
         currentTime + t
       );
+      
+      // Schedule text updates using setTimeout
+      setTimeout(() => {
+        setTestText("Playing Tone: " + Math.round(frequency).toString() + " Hz");
+      }, t * 1000);
     }
     
     // Connect nodes
@@ -119,6 +126,26 @@ const Layout = ({ children }: { children?: ReactNode }) => {
       console.log('Session already exists (PC):', existingSession)
       redirect("/")
     }
+  }
+
+  const createTriggerTest = async (qrId: string, type: string) => {
+
+    const { data, error } = await supabase
+      .from('session_trigger_test')
+      .insert([
+        {
+          qr_id: qrId,
+          type: type
+        }
+      ])
+      .select()
+
+      if (error) {
+        console.error('Error creating trigger:', error)
+        return
+      }
+    console.log('Trigger created:', data)
+
   }
 
   const updatePCSession = async (qrId: string, isPaired: boolean, isActive: boolean) => {
@@ -181,19 +208,28 @@ const Layout = ({ children }: { children?: ReactNode }) => {
             }
             else if (payload.new.type === "real") {
               // wait 2 secs then play 3 sine sweeps lasting 1 sec each sequentially
-              setIsTesting(true);
-              setTimeout(() => {
-                playSweep(rangeValues[0], rangeValues[1], 1);
-                setTimeout(() => {
+              createTriggerTest(qrId, "PC_response")
+              handleTestStart();
+              const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+              const runRealTest = async () => {
+                // countdown
+                setTestText("Counting Down: 3")
+                await sleep(1000);
+                setTestText("Counting Down: 2")
+                await sleep(1000);
+                setTestText("Counting Down: 1")
+                await sleep(1000);
+                setTestText("Counting Down: 0")
+                // play a tone so the calculation knows the starting point of the test tones
+                playSweep(1000, 1000, 0.01);
+                await sleep(10);
+                for (let i = 0; i < 3; i++) {
                   playSweep(rangeValues[0], rangeValues[1], 1);
-                  setTimeout(() => {
-                    playSweep(rangeValues[0], rangeValues[1], 1);
-                    setTimeout(() => {
-                      setIsTesting(false);
-                    }, 1000);
-                  }, 1000);
-                }, 1000);
-              }, 2000);
+                  await sleep(1000);
+                }
+                setTestText("Done");
+              };
+              runRealTest();
             }
           }
         }
@@ -350,6 +386,17 @@ const Layout = ({ children }: { children?: ReactNode }) => {
       setIsParameter(true);
       setTimeout(() => {
         setIsParameterFadingOut(false);
+      }, 300);
+    }, 300);
+  };
+
+  const handleTestStart = () => {
+    setIsPCReadyFadingIn(false);
+    setTimeout(() => {
+      setIsPCReadyScreen(false);
+      setIsTest(true);
+      setTimeout(() => {
+        setIsTestFadingIn(true);
       }, 300);
     }, 300);
   };
@@ -540,7 +587,19 @@ const Layout = ({ children }: { children?: ReactNode }) => {
                         className="p-2 border rounded w-1/2 bg-red-500 text-white hover:bg-red-700 cursor-pointer" 
                       />
                     </label>
-                  
+                </div>
+              )}
+              {isTest && (
+                <div className={`w-full md:w-3/4 flex flex-col space-y-8 lg:ml-16 transition-opacity duration-300 ${isTestFadingIn ? 'opacity-100' : 'opacity-0'}`}>
+                  <div className='flex justify-between items-center'>
+                    <h2 className="text-2xl font-bold w-full text-center">Test Started</h2>
+                  </div>
+                  <div className='font-black text-5xl w-full text-center'>
+                      {testText}
+                  </div>
+                  <div className='w-full text-center'>
+                      Keep quiet and steadily hold your mobile device until the test is Done.
+                  </div>
                 </div>
               )}
             </div>

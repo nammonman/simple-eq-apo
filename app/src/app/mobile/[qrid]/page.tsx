@@ -11,11 +11,14 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   
   const [isPCReady, setIsPCReady] = useState(false);
+  const [testText, setTestText] = useState("Waiting...");
 
   const [isMainMenu, setIsMainMenu] = useState(true);
   const [isMainMenuFadingOut, setIsMainMenuFadingOut] = useState(false);
   const [isInstruction, setIsInstruction] = useState(false);
   const [isInstructionFadingIn, setIsInstructionFadingIn] = useState(false);
+  const [isTest, setIsTest] = useState(false);
+  const [isTestFadingIn, setIsTestFadingIn] = useState(false);
 
   const createMobileSession = async (qrId: string) => {
     // First check if session exists
@@ -57,7 +60,7 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
   }
 
   const createTriggerTest = async (qrId: string, type: string) => {
-
+    
     const { data, error } = await supabase
       .from('session_trigger_test')
       .insert([
@@ -73,7 +76,6 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
         return
       }
     console.log('Trigger created:', data)
-
   }
 
   const updateMobileSession = async (qrId: string, isPaired: boolean, isActive: boolean) => {
@@ -117,6 +119,38 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
     return subscription
   }
 
+  const setupRealtimeTestSubscription = (qrId: string) => {
+    const subscription = supabase
+      .channel('session_trigger_test')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'session_trigger_test',
+          filter: `qr_id=eq.${qrId}` 
+        },
+        (payload) => {
+          if (payload.new.qr_id === qrId) {
+            console.log('PC sent trigger test:', payload.new)
+            if (payload.new.type === "PC_response") {
+              handleTestStart();
+              setTimeout(() => {
+                setTestText("Recording Audio...");
+                setTimeout(() => {
+                  setTestText("Done");
+                }, 5000);
+              }, 1000);
+            }
+            
+          }
+        }
+      )
+      .subscribe()
+
+    return subscription
+  }
+
   const HintOverlay = ({ hint }: { hint: string }) => (
     <div className="absolute bottom-full mb-2 w-48 p-2 bg-gray-700 text-white text-sm rounded shadow-lg">
       {hint}
@@ -145,8 +179,10 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
   useEffect(() => {
     createMobileSession(qrid);
     const subscription = setupRealtimePCSubscription(qrid);
+    const testSubscription = setupRealtimeTestSubscription(qrid);
     return () => {
       subscription.unsubscribe();
+      testSubscription.unsubscribe();
     };
   }, []);
 
@@ -202,6 +238,17 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
       setIsInstruction(true);
       setTimeout(() => {
         setIsInstructionFadingIn(true);
+      }, 300);
+    }, 300);
+  };
+
+  const handleTestStart = () => {
+    setIsInstructionFadingIn(false);
+    setTimeout(() => {
+      setIsInstruction(false);
+      setIsTest(true);
+      setTimeout(() => {
+        setIsTestFadingIn(true);
       }, 300);
     }, 300);
   };
@@ -361,6 +408,21 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
                       onClick={() => createTriggerTest(qrid, "real")}
                     />
                   </label>
+                </div>
+            </div>
+          )}
+          {isTest && (  
+            <div className={`inset-0 flex flex-col lg:flex-row m-auto justify-center items-center transition-opacity duration-300 ${isTestFadingIn ? 'opacity-100' : 'opacity-0'}`}>
+                <div className={`w-full md:w-3/4 flex flex-col space-y-8 lg:ml-16 `}>
+                  <div className='flex justify-between items-center'>
+                    <h2 className="text-2xl font-bold w-full text-center">Test Started</h2>
+                  </div>
+                  <div className='font-black text-5xl w-full text-center'>
+                      {testText}
+                  </div>  
+                  <div className='w-full text-center'>
+                      Keep quiet and steadily hold your mobile device until the test is Done.
+                  </div>
                 </div>
             </div>
           )}
