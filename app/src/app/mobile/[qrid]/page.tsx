@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, use } from 'react';
 import { Heading1, Menu, X } from 'lucide-react';
 import { ReactNode } from 'react';
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase';
 
 const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
   const [screenWidth, setScreenWidth] = useState(0);
