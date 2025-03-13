@@ -20,6 +20,8 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
   const [isTest, setIsTest] = useState(false);
   const [isTestFadingIn, setIsTestFadingIn] = useState(false);
 
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+
   const createMobileSession = async (qrId: string) => {
     // First check if session exists
     const { data: existingMobileSession } = await supabase
@@ -119,6 +121,61 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
     return subscription
   }
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        }
+      });
+      
+      const recorder = new MediaRecorder(stream);
+      
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/wav' });
+        await uploadAudioFile(audioBlob, qrid);
+      };
+      
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setTestText("Recording audio...");
+
+    } catch (err) {
+      console.error('Error starting recording:', err);
+      alert("There is a problem with your device's audio recording. Please try again.");
+    }
+  };
+
+  const uploadAudioFile = async (audioBlob: Blob, qrId: string) => {
+    setTestText("Uploading audio file...");
+    try {
+      const { data, error } = await supabase
+        .storage
+        .from('audio-files')
+        .upload(`${qrId}-${Date.now()}.wav`, audioBlob);
+
+      if (error) throw error;
+
+      await supabase
+        .from('session_audio_file')
+        .insert([
+          {
+            qr_id: qrId,
+            audio_file_path: data.path
+          }
+        ]);
+      setTestText('Done');
+    } catch (err) {
+      console.error('Error uploading audio:', err);
+      setTestText('Error uploading audio: ' + err);
+    }
+  };
+
   const setupRealtimeTestSubscription = (qrId: string) => {
     const subscription = supabase
       .channel('session_trigger_test')
@@ -132,17 +189,20 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
         },
         (payload) => {
           if (payload.new.qr_id === qrId) {
-            console.log('PC sent trigger test:', payload.new)
+            console.log('New trigger test:', payload.new)
             if (payload.new.type === "PC_response") {
               handleTestStart();
               setTimeout(() => {
-                setTestText("Recording Audio...");
-                setTimeout(() => {
-                  setTestText("Done");
-                }, 5000);
+                startRecording();
               }, 1000);
+            } 
+            else if (payload.new.type === "test_complete") {
+              console.log("stopping recording")
+              if (mediaRecorderRef.current) {
+                mediaRecorderRef.current.stop();
+                mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+              }
             }
-            
           }
         }
       )
@@ -150,6 +210,32 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
 
     return subscription
   }
+
+  const checkMicrophonePermission = async () => {
+    try {
+      const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+      if (result.state === 'granted') {
+        return true;
+      }
+      
+      // Request permission by attempting to get the stream
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(track => track.stop()); // Clean up
+      return true;
+    } catch (err) {
+      console.error('Microphone permission denied:', err);
+      return false;
+    }
+  };
+
+  const handleStartTest = async () => {
+    const hasPermission = await checkMicrophonePermission();
+    if (hasPermission) {
+      createTriggerTest(qrid, "real");
+    } else {
+      alert("The test cannot be started without microphone permissions. Please try again.");
+    }
+  };
 
   const HintOverlay = ({ hint }: { hint: string }) => (
     <div className="absolute bottom-full mb-2 w-48 p-2 bg-gray-700 text-white text-sm rounded shadow-lg">
@@ -392,6 +478,7 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
                           <span className="ml-2">Your PC is ready.</span>
                         </>
                       )}
+                      {}
                     </div>
                   </div>
                   <label className="flex justify-between items-center">
@@ -405,7 +492,7 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
                           ? 'bg-green-500 hover:bg-green-700' 
                           : 'bg-gray-400 cursor-not-allowed'
                       }`}
-                      onClick={() => createTriggerTest(qrid, "real")}
+                      onClick={handleStartTest}
                     />
                   </label>
                 </div>
@@ -418,10 +505,10 @@ const Layout = ({ children, qrid }: { children?: ReactNode, qrid: string }) => {
                     <h2 className="text-2xl font-bold w-full text-center">Test Started</h2>
                   </div>
                   <div className='font-black text-5xl w-full text-center'>
-                      {testText}
+                    {testText}
                   </div>  
                   <div className='w-full text-center'>
-                      Keep quiet and steadily hold your mobile device until the test is Done.
+                    Keep quiet and steadily hold your mobile device until the test is Done.
                   </div>
                 </div>
             </div>

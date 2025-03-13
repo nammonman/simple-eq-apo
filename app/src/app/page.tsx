@@ -202,7 +202,7 @@ const Layout = ({ children }: { children?: ReactNode }) => {
         },
         (payload) => {
           if (payload.new.qr_id === qrId) {
-            console.log('Mobile sent trigger test:', payload.new)
+            console.log('New trigger test:', payload.new)
             if (payload.new.type === "volume") {
               playSweep(20, 20000, 1);
             }
@@ -227,10 +227,34 @@ const Layout = ({ children }: { children?: ReactNode }) => {
                   playSweep(rangeValues[0], rangeValues[1], 1);
                   await sleep(1000);
                 }
-                setTestText("Done");
+                createTriggerTest(qrId, "test_complete")
+                setTestText("Waiting For Upload...");
               };
               runRealTest();
             }
+          }
+        }
+      )
+      .subscribe()
+
+    return subscription
+  }
+
+  const setupRealtimeFileSubscription = (qrId: string) => {
+    const subscription = supabase
+      .channel('session_audio_file')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'session_audio_file',
+          filter: `qr_id=eq.${qrId}` 
+        },
+        (payload) => {
+          if (payload.new.qr_id === qrId) {
+            console.log('File uploaded:', payload.new)
+            redirect(`/eq/${qrId}`);
           }
         }
       )
@@ -269,9 +293,11 @@ const Layout = ({ children }: { children?: ReactNode }) => {
     createPCSession(newSequence);
     const subscriptionMobile = setupRealtimeMobileSubscription(newSequence);
     const subscriptionTest = setupRealtimeTestSubscription(newSequence);
+    const subscriptionFile = setupRealtimeFileSubscription(newSequence)
     return () => {
       subscriptionMobile.unsubscribe();
       subscriptionTest.unsubscribe();
+      subscriptionFile.unsubscribe();
     };
   }, []);
 
@@ -392,6 +418,7 @@ const Layout = ({ children }: { children?: ReactNode }) => {
 
   const handleTestStart = () => {
     setIsPCReadyFadingIn(false);
+    setIsParameter(false);
     setTimeout(() => {
       setIsPCReadyScreen(false);
       setIsTest(true);
